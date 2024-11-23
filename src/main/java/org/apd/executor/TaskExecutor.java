@@ -18,16 +18,18 @@ public class TaskExecutor {
 
     public List<EntryResult> ExecuteWork(int numberOfThreads, List<StorageTask> tasks, LockType lockType) {
         // Instantiate thread pool and start worker threads
-        ThreadPool threadPool = ThreadPool.getInstance(numberOfThreads);
+        ThreadPool threadPool = ThreadPool.getInstance(sharedDatabase, numberOfThreads);
 
         // TODO: Initialize list of resulting entries
         List<EntryResult> result = null;
 
         // Assign tasks to worker threads
         for (StorageTask task: tasks) {
-            // TODO: save result if it's a write request
             threadPool.submitTask(task);
         }
+
+        // Send shutdown signal
+        threadPool.shutdown();
 
         return result;
     }
