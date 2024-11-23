@@ -2,6 +2,8 @@ package org.apd.executor;
 
 import org.apd.storage.EntryResult;
 import org.apd.storage.SharedDatabase;
+import org.apd.threadpool.ThreadPool;
+import org.apd.threadpool.Worker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +17,19 @@ public class TaskExecutor {
     }
 
     public List<EntryResult> ExecuteWork(int numberOfThreads, List<StorageTask> tasks, LockType lockType) {
-        /* IMPLEMENT HERE THE THREAD POOL, ASSIGN THE TASKS AND RETURN THE RESULTS */
-        return new ArrayList<>();
+        // Instantiate thread pool and start worker threads
+        ThreadPool threadPool = ThreadPool.getInstance(numberOfThreads);
+
+        // TODO: Initialize list of resulting entries
+        List<EntryResult> result = null;
+
+        // Assign tasks to worker threads
+        for (StorageTask task: tasks) {
+            // TODO: save result if it's a write request
+            threadPool.submitTask(task);
+        }
+
+        return result;
     }
 
     public List<EntryResult> ExecuteWorkSerial(List<StorageTask> tasks) {
