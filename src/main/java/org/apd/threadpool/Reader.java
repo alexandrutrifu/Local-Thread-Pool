@@ -1,8 +1,24 @@
 package org.apd.threadpool;
 
-public class Reader extends Worker {
-    @Override
-    public void run() {
-        // TODO: implement read action
+import org.apd.executor.StorageTask;
+import org.apd.storage.EntryResult;
+import org.apd.storage.SharedDatabase;
+
+public class Reader {
+    Worker parentWorker;
+
+    public Reader() {
+    }
+    public Reader(Worker parentWorker) {
+        this.parentWorker = parentWorker;
+    }
+
+    public EntryResult read() {
+        SharedDatabase database = ThreadPool.getSharedDatabase();
+        StorageTask task = parentWorker.getTask();
+
+        System.out.println("Thread " + parentWorker.getTask() + " updated entry number " + task.index());
+
+        return database.getData(task.index());
     }
 }

@@ -1,59 +1,106 @@
 package org.apd.threadpool;
 
 import org.apd.executor.StorageTask;
+import org.apd.storage.SharedDatabase;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPool {
+    private static SharedDatabase sharedDatabase;
     private int capacity;
     private static ThreadPool instance;
-    private List<Runnable> coreWorkers;
-    private BlockingDeque<StorageTask> waitingTasks;
+    private List<Thread> coreWorkers;
+    private static BlockingDeque<StorageTask> tasks;
+    private static AtomicInteger freeWorkers;
+    private static boolean isRunning;
+    private static Semaphore availableTasks;
 
     private ThreadPool() {
     }
-    private ThreadPool(int capacity) {
+    private ThreadPool(SharedDatabase database, int capacity) {
+        sharedDatabase = database;
         this.capacity = capacity;
         this.coreWorkers = Collections.synchronizedList(new ArrayList<>());
-        this.waitingTasks = new LinkedBlockingDeque<>();
+        tasks = new LinkedBlockingDeque<>();
+        freeWorkers = new AtomicInteger(capacity);
+        availableTasks = new Semaphore(0);
+        isRunning = true;
 
-        // Initialize core worker-threads
+        // Start core worker-threads
         initializeWorkers();
     }
 
     private void initializeWorkers() {
         for (int index = 0; index < capacity; index++) {
-            coreWorkers.set(index, new Worker(index));
+            coreWorkers.add(new Thread(new Worker(index)));
+            coreWorkers.get(index).start();
         }
     }
 
-    public static ThreadPool getInstance(int capacity) {
+    public static ThreadPool getInstance() {
+        return instance;
+    }
+
+    public static ThreadPool getInstance(SharedDatabase database, int capacity) {
         if (instance == null) {
-            instance = new ThreadPool(capacity);
+            instance = new ThreadPool(database, capacity);
         }
         return instance;
     }
 
-    public boolean submitTask(StorageTask task) {
-        // Check if core workers are busy
-        for (Runnable thread: coreWorkers) {
-            Worker workerThread = (Worker) thread;
+    public void submitTask(StorageTask task) {
+        tasks.offer(task);
 
-            if (!workerThread.isBusy()) {
-                // TODO: assign task (implement Worker method)
-                return true;
+        // Signal available task through semaphore release()
+        availableTasks.release();
+    }
+
+    public void shutdown() {
+        while (!tasks.isEmpty()) {}
+
+        // Wait for threads to finish
+        for (Thread thread: coreWorkers) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
         }
 
-        // If all core workers are busy, insert task into waiting queue
-        return waitingTasks.offer(task);
+        isRunning = false;
     }
 
     public int getCapacity() {
         return capacity;
+    }
+
+    public static AtomicInteger getFreeWorkers() {
+        return freeWorkers;
+    }
+
+    public static boolean isRunning() {
+        return isRunning;
+    }
+
+    public static Semaphore getAvailableTasks() {
+        return availableTasks;
+    }
+
+    public static BlockingDeque<StorageTask> getTasks() {
+        return tasks;
+    }
+
+    public List<Thread> getCoreWorkers() {
+        return coreWorkers;
+    }
+
+    public static SharedDatabase getSharedDatabase() {
+        return sharedDatabase;
     }
 }
