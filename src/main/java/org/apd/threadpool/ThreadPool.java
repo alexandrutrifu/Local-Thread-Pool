@@ -12,32 +12,28 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPool {
-    private static SharedDatabase sharedDatabase;
+    private SharedDatabase sharedDatabase;
     private int capacity;
     private static ThreadPool instance;
     private List<Thread> coreWorkers;
-    private static BlockingDeque<StorageTask> tasks;
-    private static AtomicInteger freeWorkers;
-    private static boolean isRunning;
-    private static Semaphore availableTasks;
+    private BlockingDeque<StorageTask> tasks;
+    private boolean isRunning;
+    private Semaphore availableTasks;
 
     private ThreadPool() {
     }
     private ThreadPool(SharedDatabase database, int capacity) {
         sharedDatabase = database;
         this.capacity = capacity;
-        this.coreWorkers = Collections.synchronizedList(new ArrayList<>());
+        coreWorkers = Collections.synchronizedList(new ArrayList<>());
         tasks = new LinkedBlockingDeque<>();
-        freeWorkers = new AtomicInteger(capacity);
-        availableTasks = new Semaphore(0);
+        availableTasks = new Semaphore(0, true);
         isRunning = true;
-
-        // Start core worker-threads
-        initializeWorkers();
     }
 
-    private void initializeWorkers() {
+    public void initializeWorkers() {
         for (int index = 0; index < capacity; index++) {
+//            System.out.println("Started thread " + index);
             coreWorkers.add(new Thread(new Worker(index)));
             coreWorkers.get(index).start();
         }
@@ -62,7 +58,12 @@ public class ThreadPool {
     }
 
     public void shutdown() {
-        while (!tasks.isEmpty()) {}
+        isRunning = false;
+
+        // Wake up waiting threads
+        for (Thread thread: coreWorkers) {
+            availableTasks.release();
+        }
 
         // Wait for threads to finish
         for (Thread thread: coreWorkers) {
@@ -72,27 +73,17 @@ public class ThreadPool {
                 throw new RuntimeException(e);
             }
         }
-
-        isRunning = false;
     }
 
-    public int getCapacity() {
-        return capacity;
-    }
-
-    public static AtomicInteger getFreeWorkers() {
-        return freeWorkers;
-    }
-
-    public static boolean isRunning() {
+    public boolean isRunning() {
         return isRunning;
     }
 
-    public static Semaphore getAvailableTasks() {
+    public Semaphore getAvailableTasks() {
         return availableTasks;
     }
 
-    public static BlockingDeque<StorageTask> getTasks() {
+    public BlockingDeque<StorageTask> getTasks() {
         return tasks;
     }
 
@@ -100,7 +91,11 @@ public class ThreadPool {
         return coreWorkers;
     }
 
-    public static SharedDatabase getSharedDatabase() {
+    public SharedDatabase getSharedDatabase() {
         return sharedDatabase;
+    }
+
+    public void setIsRunning(boolean isRunning) {
+        this.isRunning = isRunning;
     }
 }

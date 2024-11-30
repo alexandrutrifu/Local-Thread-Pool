@@ -1,16 +1,17 @@
 package org.apd.threadpool;
 
 import org.apd.executor.StorageTask;
+import org.apd.executor.TaskExecutor;
+import org.apd.threadpool.sync.DatabaseAccessManager;
 
-import java.lang.ref.WeakReference;
-import java.util.PriorityQueue;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.TimeUnit;
 
-public class Worker implements Runnable {
+public class Worker implements DatabaseAccessManager, Runnable {
+    private ThreadPool threadPool;
     private int index;
     private StorageTask task;
-    private AtomicBoolean busy; // TODO: See if atomicity is needed
+    private Semaphore busy;
     private Semaphore tasksAvailable;
 
     public Worker() {
@@ -19,15 +20,16 @@ public class Worker implements Runnable {
         this(index, null);
     }
     public Worker(int index, StorageTask task) {
+        this.threadPool = ThreadPool.getInstance();
         this.index = index;
         this.task = task;
-        this.busy = new AtomicBoolean(false);
-        this.tasksAvailable = ThreadPool.getAvailableTasks();
+        this.busy = new Semaphore(0);
+        this.tasksAvailable = threadPool.getAvailableTasks();
     }
 
     @Override
     public void run() {
-        while (ThreadPool.isRunning()) {
+        while (threadPool.isRunning()) {
             // Tries to get a new task
             try {
                 tasksAvailable.acquire();
@@ -35,34 +37,33 @@ public class Worker implements Runnable {
                 throw new RuntimeException(e);
             }
 
-            // Polls from task pool
-            assignTask(ThreadPool.getTasks().poll());
-
-            // Thread is now busy
-            ThreadPool.getFreeWorkers().decrementAndGet();
-
-            // Handle request - TODO: return result to thread pool
-            if (task.isWrite()) {
-                new Writer(this).write();
-            } else {
-                new Reader(this).read();
+            if (!threadPool.isRunning()) {
+                return;
             }
 
-            // Set busy state to false before quitting
-            busy.set(false);
+            // Polls from task pool
+            try {
+                assignTask(threadPool.getTasks().poll(500, TimeUnit.MILLISECONDS));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
 
-            // Signal a new free worker
-            ThreadPool.getFreeWorkers().incrementAndGet();
+            // Handle request
+            if (task.isWrite()) {
+                TaskExecutor.result.add(new Writer(this).write());
+            } else {
+                TaskExecutor.result.add(new Reader(this).read());
+            }
+
+            if (threadPool.getTasks().isEmpty()) {
+                flag.release();
+                threadPool.setIsRunning(false);
+            }
         }
     }
 
     private void assignTask(StorageTask task) {
         this.task = task;
-        busy.set(true);
-    }
-
-    public boolean isBusy() {
-        return busy.get();
     }
 
     public StorageTask getTask() {
@@ -71,5 +72,9 @@ public class Worker implements Runnable {
 
     public int getIndex() {
         return index;
+    }
+
+    public void releaseBusy() {
+        busy.release();
     }
 }
