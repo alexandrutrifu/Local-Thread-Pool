@@ -11,7 +11,6 @@ public class Worker implements DatabaseAccessManager, Runnable {
     private ThreadPool threadPool;
     private int index;
     private StorageTask task;
-    private Semaphore busy;
     private Semaphore tasksAvailable;
 
     public Worker() {
@@ -23,13 +22,12 @@ public class Worker implements DatabaseAccessManager, Runnable {
         this.threadPool = ThreadPool.getInstance();
         this.index = index;
         this.task = task;
-        this.busy = new Semaphore(0);
         this.tasksAvailable = threadPool.getAvailableTasks();
     }
 
     @Override
     public void run() {
-        while (threadPool.isRunning()) {
+        while (threadPool.isRunning() || !threadPool.getTasks().isEmpty()) {
             // Tries to get a new task
             try {
                 tasksAvailable.acquire();
@@ -55,7 +53,7 @@ public class Worker implements DatabaseAccessManager, Runnable {
                 TaskExecutor.result.add(new Reader(this).read());
             }
 
-            if (threadPool.getTasks().isEmpty()) {
+            if (threadPool.getTasks().isEmpty() && TaskExecutor.getTasksLeft() == 0) {
                 flag.release();
                 threadPool.setIsRunning(false);
             }
@@ -69,12 +67,7 @@ public class Worker implements DatabaseAccessManager, Runnable {
     public StorageTask getTask() {
         return task;
     }
-
     public int getIndex() {
         return index;
-    }
-
-    public void releaseBusy() {
-        busy.release();
     }
 }

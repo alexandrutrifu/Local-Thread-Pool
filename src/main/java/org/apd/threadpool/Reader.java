@@ -1,6 +1,7 @@
 package org.apd.threadpool;
 
 import org.apd.executor.StorageTask;
+import org.apd.executor.TaskExecutor;
 import org.apd.storage.EntryResult;
 import org.apd.storage.SharedDatabase;
 
@@ -16,14 +17,37 @@ public class Reader implements DatabaseAccessManager {
     }
 
     public EntryResult read() {
-        SharedDatabase database = ThreadPool.getInstance().getSharedDatabase();
+        SharedDatabase database = TaskExecutor.getSharedDatabase();
         StorageTask task = parentWorker.getTask();
 
-//        System.out.println("Thread " + parentWorker.getIndex() + " read from entry number " + task.index());
+        // Check problem priorities
+        switch (TaskExecutor.getLockType()) {
+            case ReaderPreferred -> {
+                return prioritizeReaders(task, database);
+            }
+            case WriterPreferred1 -> {
+                return prioritizeWriters1(task, database);
+            }
+            case WriterPreferred2 -> {
+                return prioritizeWriters2(task, database);
+            }
+        }
 
+        return null;
+    }
+
+    private EntryResult prioritizeWriters2(StorageTask task, SharedDatabase database) {
+        return null;
+    }
+
+    private EntryResult prioritizeWriters1(StorageTask task, SharedDatabase database) {
+        return null;
+    }
+
+    private EntryResult prioritizeReaders(StorageTask task, SharedDatabase database) {
         // Synchronize access
         try {
-            readerAccess[task.index()].acquire();
+            readerAccess.get(task.index()).acquire();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -33,18 +57,20 @@ public class Reader implements DatabaseAccessManager {
         if (counter.readers[task.index()] == 1) {
             // Prioritize reader access
             try {
-                DatabaseAccessManager.databaseAccess[task.index()].acquire();
+                databaseAccess.get(task.index()).acquire();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
 
-        DatabaseAccessManager.readerAccess[task.index()].release();
+        System.out.println("Reading...");
+
+        readerAccess.get(task.index()).release();
 
         EntryResult entryResult = database.getData(task.index());
 
         try {
-            DatabaseAccessManager.readerAccess[task.index()].acquire();
+            readerAccess.get(task.index()).acquire();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -52,10 +78,10 @@ public class Reader implements DatabaseAccessManager {
         counter.readers[task.index()]--;
 
         if (counter.readers[task.index()] == 0) {
-            DatabaseAccessManager.databaseAccess[task.index()].release();
+            databaseAccess.get(task.index()).release();
         }
 
-        DatabaseAccessManager.readerAccess[task.index()].release();
+        readerAccess.get(task.index()).release();
 
         return entryResult;
     }

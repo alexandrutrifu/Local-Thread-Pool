@@ -1,5 +1,6 @@
 package org.apd.threadpool;
 
+import org.apd.executor.LockType;
 import org.apd.executor.StorageTask;
 import org.apd.storage.SharedDatabase;
 
@@ -12,7 +13,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPool {
-    private SharedDatabase sharedDatabase;
     private int capacity;
     private static ThreadPool instance;
     private List<Thread> coreWorkers;
@@ -22,8 +22,7 @@ public class ThreadPool {
 
     private ThreadPool() {
     }
-    private ThreadPool(SharedDatabase database, int capacity) {
-        sharedDatabase = database;
+    private ThreadPool(int capacity) {
         this.capacity = capacity;
         coreWorkers = Collections.synchronizedList(new ArrayList<>());
         tasks = new LinkedBlockingDeque<>();
@@ -32,8 +31,10 @@ public class ThreadPool {
     }
 
     public void initializeWorkers() {
+        // Reset semaphore
+        availableTasks.drainPermits();
+
         for (int index = 0; index < capacity; index++) {
-//            System.out.println("Started thread " + index);
             coreWorkers.add(new Thread(new Worker(index)));
             coreWorkers.get(index).start();
         }
@@ -42,11 +43,15 @@ public class ThreadPool {
     public static ThreadPool getInstance() {
         return instance;
     }
-
-    public static ThreadPool getInstance(SharedDatabase database, int capacity) {
+    public static ThreadPool getInstance(int capacity) {
         if (instance == null) {
-            instance = new ThreadPool(database, capacity);
+            instance = new ThreadPool(capacity);
         }
+
+        if (instance.coreWorkers.size() != capacity) {
+            instance.capacity = capacity;
+        }
+
         return instance;
     }
 
@@ -73,29 +78,21 @@ public class ThreadPool {
                 throw new RuntimeException(e);
             }
         }
+
+        coreWorkers.clear();
     }
 
     public boolean isRunning() {
         return isRunning;
     }
-
     public Semaphore getAvailableTasks() {
         return availableTasks;
     }
-
     public BlockingDeque<StorageTask> getTasks() {
         return tasks;
     }
-
-    public List<Thread> getCoreWorkers() {
-        return coreWorkers;
-    }
-
-    public SharedDatabase getSharedDatabase() {
-        return sharedDatabase;
-    }
-
     public void setIsRunning(boolean isRunning) {
         this.isRunning = isRunning;
     }
+
 }
