@@ -11,6 +11,7 @@ public interface DatabaseAccessManager {
     List<Semaphore> databaseAccess = new ArrayList<>();
     List<Semaphore> readerAccess = new ArrayList<>();
     List<Semaphore> writerAccess = new ArrayList<>();
+    Semaphore enter = new Semaphore(1);
     Semaphore flag = new Semaphore(0);
     ReadersWritersCounter counter = ReadersWritersCounter.getInstance();
 

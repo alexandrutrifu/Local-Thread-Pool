@@ -40,7 +40,49 @@ public class Writer implements DatabaseAccessManager {
     }
 
     private EntryResult prioritizeWriters1(StorageTask task, SharedDatabase database) {
-        return null;
+        try {
+            enter.acquire();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (counter.readers[task.index()] > 0 || counter.writers[task.index()] > 0) {
+            counter.waitingWriters[task.index()]++;
+            enter.release();
+            try {
+                writerAccess.get(task.index()).acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        counter.writers[task.index()]++;
+        enter.release();
+
+        System.out.println("Writer " + parentWorker.getIndex() + " is updating entry " + task.index() + "...");
+
+        // Write action
+        EntryResult entryResult = database.addData(task.index(), task.data());
+
+        try {
+            enter.acquire();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        counter.writers[task.index()]--;
+
+        if (counter.waitingWriters[task.index()] == 0 && counter.waitingReaders[task.index()] > 0) {
+            counter.waitingReaders[task.index()]--;
+            readerAccess.get(task.index()).release();
+        } else if (counter.waitingWriters[task.index()] > 0) {
+            counter.waitingWriters[task.index()]--;
+            writerAccess.get(task.index()).release();
+        } else if (counter.waitingReaders[task.index()] == 0 && counter.waitingWriters[task.index()] == 0) {
+            enter.release();
+        }
+
+        return entryResult;
     }
 
     private static EntryResult prioritizeReaders(StorageTask task, SharedDatabase database) {
