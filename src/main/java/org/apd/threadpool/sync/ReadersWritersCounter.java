@@ -2,13 +2,15 @@ package org.apd.threadpool.sync;
 
 import org.apd.executor.TaskExecutor;
 
+import java.util.concurrent.atomic.AtomicIntegerArray;
+
 public class ReadersWritersCounter {
     private static ReadersWritersCounter instance;
     public int capacity;
-    public int[] readers;
-    public int[] writers;
-    public int[] waitingReaders;
-    public int[] waitingWriters;
+    public AtomicIntegerArray readers;
+    public AtomicIntegerArray writers;
+    public AtomicIntegerArray waitingReaders;
+    public AtomicIntegerArray waitingWriters;
 
     private ReadersWritersCounter() {
         capacity = TaskExecutor.getDatabaseSize();
@@ -17,10 +19,10 @@ public class ReadersWritersCounter {
 
     public void restartCounters(int storageSize) {
         capacity = storageSize;
-        readers = new int[capacity];
-        writers = new int[capacity];
-        waitingReaders = new int[capacity];
-        waitingWriters = new int[capacity];
+        readers = new AtomicIntegerArray(capacity);
+        writers = new AtomicIntegerArray(capacity);
+        waitingReaders = new AtomicIntegerArray(capacity);
+        waitingWriters = new AtomicIntegerArray(capacity);
     }
 
     public static ReadersWritersCounter getInstance() {

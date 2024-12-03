@@ -40,11 +40,7 @@ public class Worker implements DatabaseAccessManager, Runnable {
             }
 
             // Polls from task pool
-            try {
-                assignTask(threadPool.getTasks().poll(500, TimeUnit.MILLISECONDS));
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            assignTask(threadPool.getTasks().poll());
 
             // Handle request
             if (task.isWrite()) {
@@ -52,6 +48,8 @@ public class Worker implements DatabaseAccessManager, Runnable {
             } else {
                 TaskExecutor.result.add(new Reader(this).read());
             }
+
+            System.out.println("Tasks left: " + TaskExecutor.getTasksLeft());
 
             if (threadPool.getTasks().isEmpty() && TaskExecutor.getTasksLeft() == 0) {
                 flag.release();

@@ -21,12 +21,12 @@ public class TaskExecutor implements DatabaseAccessManager {
     }
 
     public List<EntryResult> ExecuteWork(int numberOfThreads, List<StorageTask> tasks, LockType lockType) {
-        // Restart synchronization mechanisms
-        DatabaseAccessManager.initializeSemaphores(sharedDatabase.getSize());
-
         // Initialize lock type and task number
         TaskExecutor.lockType = lockType;
         TaskExecutor.tasksToSubmit = tasks.size();
+
+        // Restart synchronization mechanisms
+        DatabaseAccessManager.initializeSemaphores(sharedDatabase.getSize());
 
         // Instantiate thread pool and start worker threads
         ThreadPool threadPool = ThreadPool.getInstance(numberOfThreads);

@@ -36,19 +36,48 @@ public class Writer implements DatabaseAccessManager {
     }
 
     private EntryResult prioritizeWriters2(StorageTask task, SharedDatabase database) {
-        return null;
+        synchronized (sharedLocks.get(task.index())) {
+            while (counter.writers.get(task.index()) > 0 || counter.readers.get(task.index()) > 0) {
+                counter.waitingWriters.addAndGet(task.index(), 1);
+                try {
+                    sharedLocks.get(task.index()).wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+                counter.waitingWriters.addAndGet(task.index(), -1);
+            }
+
+            counter.writers.addAndGet(task.index(), 1);
+        }
+
+        System.out.println("Writer " + parentWorker.getIndex() + " is updating entry " + task.index() + "...");
+
+        // Write action
+        EntryResult entryResult = database.addData(task.index(), task.data());
+
+        synchronized (sharedLocks.get(task.index())) {
+            counter.writers.addAndGet(task.index(), -1);
+            if (counter.waitingWriters.get(task.index()) == 0 && counter.waitingReaders.get(task.index()) > 0) {
+                sharedLocks.get(task.index()).notifyAll();
+            } else if (counter.waitingWriters.get(task.index()) > 0) {
+                sharedLocks.get(task.index()).notifyAll();
+            }
+        }
+
+        return entryResult;
     }
 
     private EntryResult prioritizeWriters1(StorageTask task, SharedDatabase database) {
         try {
-            enter.acquire();
+            enter.get(task.index()).acquire();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
-        if (counter.readers[task.index()] > 0 || counter.writers[task.index()] > 0) {
-            counter.waitingWriters[task.index()]++;
-            enter.release();
+        if (counter.readers.get(task.index()) > 0 || counter.writers.get(task.index()) > 0) {
+            counter.waitingWriters.addAndGet(task.index(), 1);
+            enter.get(task.index()).release();
             try {
                 writerAccess.get(task.index()).acquire();
             } catch (InterruptedException e) {
@@ -56,8 +85,8 @@ public class Writer implements DatabaseAccessManager {
             }
         }
 
-        counter.writers[task.index()]++;
-        enter.release();
+        counter.writers.addAndGet(task.index(), 1);
+        enter.get(task.index()).release();
 
         System.out.println("Writer " + parentWorker.getIndex() + " is updating entry " + task.index() + "...");
 
@@ -65,21 +94,21 @@ public class Writer implements DatabaseAccessManager {
         EntryResult entryResult = database.addData(task.index(), task.data());
 
         try {
-            enter.acquire();
+            enter.get(task.index()).acquire();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
 
-        counter.writers[task.index()]--;
+        counter.writers.addAndGet(task.index(), -1);
 
-        if (counter.waitingWriters[task.index()] == 0 && counter.waitingReaders[task.index()] > 0) {
-            counter.waitingReaders[task.index()]--;
+        if (counter.waitingWriters.get(task.index()) == 0 && counter.waitingReaders.get(task.index()) > 0) {
+            counter.waitingReaders.addAndGet(task.index(), -1);
             readerAccess.get(task.index()).release();
-        } else if (counter.waitingWriters[task.index()] > 0) {
-            counter.waitingWriters[task.index()]--;
+        } else if (counter.waitingWriters.get(task.index()) > 0) {
+            counter.waitingWriters.addAndGet(task.index(), -1);
             writerAccess.get(task.index()).release();
-        } else if (counter.waitingReaders[task.index()] == 0 && counter.waitingWriters[task.index()] == 0) {
-            enter.release();
+        } else if (counter.waitingReaders.get(task.index()) == 0 && counter.waitingWriters.get(task.index()) == 0) {
+            enter.get(task.index()).release();
         }
 
         return entryResult;
