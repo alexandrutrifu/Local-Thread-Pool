@@ -117,7 +117,7 @@ class ExecutorTests {
 
     @Test
     void executeWorkWriterPreferred11() {
-        executeWork(10, 200, 0.7, testValues1, testValues1.length, 255, 100, 250, LockType.WriterPreferred1, 1500);
+        executeWork(10, 200, 0.7, testValues1, testValues1.length, 255, 100, 250, LockType.WriterPreferred1, 15);
     }
 
     @Test
@@ -147,7 +147,7 @@ class ExecutorTests {
 
     @Test
     void executeWorkWriterPreferred21() {
-        executeWork(10, 200, 0.7, testValues1, testValues1.length, 255, 100, 250, LockType.WriterPreferred2, 105);
+        executeWork(10, 200, 0.7, testValues1, testValues1.length, 255, 100, 250, LockType.WriterPreferred2, 15);
     }
 
     @Test

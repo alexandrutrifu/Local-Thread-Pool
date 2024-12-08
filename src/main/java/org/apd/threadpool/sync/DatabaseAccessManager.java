@@ -15,8 +15,6 @@ public interface DatabaseAccessManager {
     List<Semaphore> writerAccess = new ArrayList<>();
     List<Semaphore> enter = new ArrayList<>();
     List<Object> sharedLocks = new ArrayList<>();
-    List<Object> readerLocks = new ArrayList<>();
-    List<Object> writerLocks = new ArrayList<>();
     Semaphore flag = new Semaphore(0);
     ReadersWritersCounter counter = ReadersWritersCounter.getInstance();
 
@@ -34,8 +32,6 @@ public interface DatabaseAccessManager {
     static void initializeWriterPreferred(int storageSize) {
         for (int index = 0; index < storageSize; index++) {
             sharedLocks.add(new Object());
-            readerLocks.add(new Object());
-            writerLocks.add(new Object());
             readerAccess.add(new Semaphore(0));
             writerAccess.add(new Semaphore(0));
             enter.add(new Semaphore(1));
