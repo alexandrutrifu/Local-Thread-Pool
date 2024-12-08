@@ -49,8 +49,6 @@ public class Worker implements DatabaseAccessManager, Runnable {
                 TaskExecutor.result.add(new Reader(this).read());
             }
 
-            System.out.println("Tasks left: " + TaskExecutor.getTasksLeft());
-
             if (threadPool.getTasks().isEmpty() && TaskExecutor.getTasksLeft() == 0) {
                 flag.release();
                 threadPool.setIsRunning(false);

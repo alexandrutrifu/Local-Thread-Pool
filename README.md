@@ -12,18 +12,22 @@ _Notice:_ If the task queue is empty but submissions are not yet complete, threa
 
 The context of the application (i.e., accessing and updating entries in a database) underscores the usefulness of a thread pool:
 - Read and write operations may target independent database entries, allowing them to be parallelized.
-    - When targeting different entries (where synchronization is not required), **blocking the main thread** is avoided, as it does not have to wait for each operation to complete.
-    - When operations target the same entry, **concurrent access** is avoided through the implementation of **mutual exclusion** mechanisms.
+  - When targeting different entries (where synchronization is not required), **blocking the main thread** is avoided, as it does not have to wait for each operation to complete.
+  - When operations target the same entry, **concurrent access** is avoided through the implementation of **mutual exclusion** mechanisms.
 
-## Notes on corresponding ExecutorTests
+## Notes on ExecutorTests
 
 The tests are divided into two categories, based on the task priority type: _reader-priority_ and _writer-priority_.
 
 Regardless of priority type, the tests vary based on the parameters associated with each scenario:
-- the number of threads in the pool;
-- the total number of tasks;
+- the number of threads in the pool:
+  - Depending on the number of cores available on the system, **execution time decreases** as the number of threads increases.
+- the total number of tasks:
+  - This impacts the program's execution time, highlighting both the implemented synchronization mechanisms and the uniform distribution of tasks.
 - the proportion of Reader/Writer tasks:
-    - e.g., in reader-priority tests, Reader tasks are less frequent than Writer tasks, to verify the prioritization of the former.
-- the size of database entries;
+  - e.g., in reader-priority tests, Reader tasks are less frequent than Writer tasks, to verify the prioritization of the former.
+  - For a large number of tasks, **execution time decreases** as the proportion of tasks in the prioritized category increases.
+- the number of database entries and their size:
+  - This affects the execution time of read/write operations.
 - waiting times for verifying correct synchronization:
-    - used to test exclusive access to database entries.
+  - Used to test exclusive access to database entries.

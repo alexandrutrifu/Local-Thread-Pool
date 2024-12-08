@@ -51,8 +51,6 @@ public class Writer implements DatabaseAccessManager {
             counter.writers.addAndGet(task.index(), 1);
         }
 
-        System.out.println("Writer " + parentWorker.getIndex() + " is updating entry " + task.index() + "...");
-
         // Write action
         EntryResult entryResult = database.addData(task.index(), task.data());
 
@@ -88,8 +86,6 @@ public class Writer implements DatabaseAccessManager {
         counter.writers.addAndGet(task.index(), 1);
         enter.get(task.index()).release();
 
-        System.out.println("Writer " + parentWorker.getIndex() + " is updating entry " + task.index() + "...");
-
         // Write action
         EntryResult entryResult = database.addData(task.index(), task.data());
 
@@ -121,8 +117,6 @@ public class Writer implements DatabaseAccessManager {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
-        System.out.println("Writing...");
 
         EntryResult entryResult = database.addData(task.index(), task.data());
 

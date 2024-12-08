@@ -51,8 +51,6 @@ public class TaskExecutor implements DatabaseAccessManager {
 
         threadPool.shutdown();
 
-        System.out.println("Finished!");
-
         return result;
     }
 

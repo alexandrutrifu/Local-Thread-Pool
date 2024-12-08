@@ -21,10 +21,14 @@ Testele sunt împărțite în două categorii, vizând tipul de prioritate al ta
 
 Independent de tipul de prioritate, testele diferă prin parametrii asociați fiecărui scenariu:
 - numărul de thread-uri din pool;
-- numărul total de task-uri;
+  - în funcție de numărul de core-uri disponibile pe sistem, se poate observa **scăderea timpului de execuție** odată cu creșterea numărului de thread-uri.
+- numărul total de task-uri
+  - afectează timpul de execuție al programului, punând în evidență atât mecanismele de sincronizare implementate, cât și distribuția uniformă a task-urilor.
 - proporția de task-uri de tip Reader/Writer
   - e.g. în cazul testelor de tip reader-priority, task-urile de tip Reader sunt mai rare decât cele de tip Writer, pentru a verifica prioritizarea primelor.
-- dimensiunea intrărilor din baza de date;
+  - pentru un număr mare de task-uri, se poate observa **scăderea timpului de execuție** odată cu creșterea proporției de task-uri din categoria prioritizată.
+- numărul de intrări din baza de date & dimensiunea acestora
+  - afectează timpul de execuție al operațiilor de citire/scriere.
 - timpi de așteptare pentru verificarea sincronizării corecte
     - folosiți pentru a testa accesul exclusiv la intrările bazei de date.
 

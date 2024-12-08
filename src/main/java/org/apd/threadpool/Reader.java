@@ -52,8 +52,6 @@ public class Reader implements DatabaseAccessManager {
             counter.readers.addAndGet(task.index(), 1);
         }
 
-        System.out.println("Reader " + parentWorker.getIndex() + " is reading from entry " + task.index() + "...");
-
         // Read action
         EntryResult entryResult = database.getData(task.index());
 
@@ -92,8 +90,6 @@ public class Reader implements DatabaseAccessManager {
         } else if (counter.waitingReaders.get(task.index()) == 0) {
             enter.get(task.index()).release();
         }
-
-        System.out.println("Reader " + parentWorker.getIndex() + " is reading from entry " + task.index() + "...");
 
         // Read action
         EntryResult entryResult = database.getData(task.index());
@@ -134,8 +130,6 @@ public class Reader implements DatabaseAccessManager {
                 throw new RuntimeException(e);
             }
         }
-
-        System.out.println("Reading...");
 
         readerAccess.get(task.index()).release();
 
